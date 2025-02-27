@@ -38,6 +38,7 @@ class Consumer {
           };
           await pub.send("result-queue", resultPayload);
           console.log(`Sent result for job to result-queue ${resultPayload}`);
+          await pub.close();
         } catch (error) {
           console.error("Error processing job:", error);
         }

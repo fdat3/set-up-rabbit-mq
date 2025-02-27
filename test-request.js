@@ -1,4 +1,4 @@
-const http = require('http'); // Sửa từ https thành http
+const http = require('http');
 
 const sendRequest = (index) => {
   return new Promise((resolve) => {
@@ -52,7 +52,7 @@ const sendRequest = (index) => {
 };
 
 const testRequests = async () => {
-  const totalRequests = 100;
+  const totalRequests = 1000;
   const requests = [];
 
   console.log('Starting test...');
