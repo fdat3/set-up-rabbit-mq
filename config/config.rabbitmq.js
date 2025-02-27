@@ -5,7 +5,7 @@ function createConnection(name) {
   const rabbit = new Connection(process.env.RABBIT_MQ_URL);
 
   rabbit.on('connection', () => {
-    console.log('Connection successfully (re)established')
+    console.log(`${name} connection successfully (re)established`)
   })
 
   rabbit.on('error', (err) => {

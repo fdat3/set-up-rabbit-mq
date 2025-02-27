@@ -1,60 +1,35 @@
-const { createConnection } = require('../config/config.rabbitmq');
+const { createConnection } = require("../config/config.rabbitmq");
 
 class Publisher {
   constructor() {
-    this.rabbit = createConnection('publisher');
-    this.setupEventListeners();
+    this.rabbit = createConnection("publisher");
+    this.channel = null;
+    this.init();
   }
 
-  setupEventListeners() {
-    this.rabbit.on('error', (err) => {
-      console.error('RabbitMQ connection error:', err);
-    });
-
-    this.rabbit.on('connection', () => {
-      console.log('Publisher connected to RabbitMQ');
-      this.rabbit.queueDeclare({ queue: 'job-queue', durable: true });
-      this.rabbit.queueDeclare({ queue: 'result-queue', durable: true });
+  async init() {
+    this.rabbit.on("connection", async () => {
+      console.log("Publisher connected to RabbitMQ");
+      await this.rabbit.queueDeclare({ queue: "job-queue", durable: true });
+      this.channel = await this.rabbit.acquire('job-channel');
     });
   }
 
   async publishJob(job) {
     try {
-      const pub = await this.rabbit.createPublisher('job-queue', {
-        routingKey: 'process',
-        body: Buffer.from(JSON.stringify(job)),
-        properties: {
-          deliveryMode: 2,
-          contentType: 'application/json'
-        }
+      if (!this.channel) await this.init();
+      this.channel = await this.rabbit.createPublisher("job-queue", {
+        properties: { deliveryMode: 2, contentType: "application/json" }
       });
-      await pub.send('job-queue', { id: job.id });
-      return { error: false, data: { jobId: job.id } };
+      await this.channel.send("job-queue", job);
     } catch (error) {
-      console.error('Error publishing to queue:', error);
-      return { error: true, data: null, msg: 'Failed to publish job' };
+      console.error("Error publishing job:", error);
+      return { error: true, message: "Failed to publish job" };
     }
   }
 
-  async getResultFromQueue() {
-    return new Promise((resolve) => {
-      this.rabbit.createConsumer({
-        queue: 'result-queue',
-        queueOptions: { durable: true },
-        qos: { prefetchCount: 1 },
-      }, async (msg) => {
-        try {
-          const result = msg.body;
-          resolve(result);
-        } catch (error) {
-          console.error('Error processing result:', error);
-          resolve({ error: true, data: null, msg: 'Failed to process result' });
-        }
-      });
-    });
-  }
-
   async close() {
+    if (this.channel) await this.channel.close();
     await this.rabbit.close();
   }
 }

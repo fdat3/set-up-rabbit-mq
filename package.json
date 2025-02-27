@@ -5,8 +5,7 @@
   "type": "commonjs",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start:publisher": "node server.js",
-    "start:consumer": "node subscriber/subscribe.js"
+    "start": "node server.js publisher/publish subscriber/subscribe.js"
   },
   "keywords": [],
   "author": "",
