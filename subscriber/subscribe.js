@@ -16,12 +16,7 @@ class Consumer {
 
       await new Promise((resolve) => this.rabbit.once("connection", resolve));
       console.log("Consumer connected to RabbitMQ");
-
-      // Khởi tạo queue
-      await this.rabbit.queueDeclare({ queue: "job-queue", durable: true });
       await this.rabbit.queueDeclare({ queue: "result-queue", durable: true });
-
-      // Tạo channel cho result-queue một lần
       this.resultChannel = await this.rabbit.createPublisher("result-queue", {
         properties: { deliveryMode: 2, contentType: "application/json" },
       });
@@ -39,14 +34,14 @@ class Consumer {
       {
         queue: "job-queue",
         queueOptions: { durable: true },
-        // qos: { prefetchCount: 1 } // Uncomment nếu cần giới hạn prefetch
+        // qos: { prefetchCount: 10 } // Uncomment nếu cần giới hạn prefetch
       },
       async (msg) => {
         try {
           const job = msg.body;
           console.log(`Processing job ------- `);
           const result = await jobService.jobQueueMQ(job);
-          const logLine = `Processed message with sequence: ${job.sequence_number} at ${new Date().toISOString()}\n`;
+          const logLine = `${result.msg} with sequence: ${result.data} at ${new Date().toISOString()}\n`;
           fs.appendFileSync("log-queue.txt", logLine);
 
           const resultPayload = {

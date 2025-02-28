@@ -13,7 +13,7 @@ const jobQueueMQ = async (job) => {
 
     return {
       error: false,
-      data: { result: `Processed ${job.sequence_number}` },
+      data: job.sequence_number,
       code: 200,
       msg: "Job processed successfully from service"
     };

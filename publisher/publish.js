@@ -11,7 +11,6 @@ class Publisher {
   async init() {
     try {
       if (this.isInitialized) return; // Ngăn khởi tạo lại
-
       await new Promise((resolve) => this.rabbit.once("connection", resolve)); // Chờ connection lần đầu
       console.log("Publisher connected to RabbitMQ");
       await this.rabbit.queueDeclare({ queue: "job-queue", durable: true });

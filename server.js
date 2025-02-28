@@ -10,7 +10,19 @@ app.post("/process", async (req, res) => {
     const job = {
       data: `Request at ${new Date().toISOString()}`,
       sequence_number: sequence++,
-      timestamp: Date.now()
+      timestamp: (() => {
+        const vietnamTime = new Date(Date.now() + 7 * 60 * 60 * 1000);
+        return `${vietnamTime
+          .getUTCHours()
+          .toString()
+          .padStart(2, "0")}:${vietnamTime
+          .getUTCMinutes()
+          .toString()
+          .padStart(2, "0")}:${vietnamTime
+          .getUTCSeconds()
+          .toString()
+          .padStart(2, "0")}`;
+      })()
     };
     // Đẩy job vào job-queue
     const publishResult = await publisher.publishJob(job);
@@ -26,7 +38,7 @@ app.post("/process", async (req, res) => {
   }
 });
 
-const PORT = 3001;
+const PORT = 3002;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
