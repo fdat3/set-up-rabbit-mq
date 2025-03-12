@@ -7,25 +7,11 @@ let sequence = 0;
 
 app.post("/process", async (req, res) => {
   try {
-    const job = {
-      data: `Request at ${new Date().toISOString()}`,
-      sequence_number: sequence++,
-      timestamp: (() => {
-        const vietnamTime = new Date(Date.now() + 7 * 60 * 60 * 1000);
-        return `${vietnamTime
-          .getUTCHours()
-          .toString()
-          .padStart(2, "0")}:${vietnamTime
-          .getUTCMinutes()
-          .toString()
-          .padStart(2, "0")}:${vietnamTime
-          .getUTCSeconds()
-          .toString()
-          .padStart(2, "0")}`;
-      })()
-    };
+    const deals = Array.from({ length: 1000000 }, () => ({
+      commissionpercentage: req.body
+    }));
     // Đẩy job vào job-queue
-    const publishResult = await publisher.publishJob(job);
+    const publishResult = await publisher.publishJob(deals);
     return res.json({
       error: false,
       data: publishResult
@@ -38,7 +24,7 @@ app.post("/process", async (req, res) => {
   }
 });
 
-const PORT = 3002;
+const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

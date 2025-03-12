@@ -32,25 +32,21 @@ class Consumer {
   async startConsumer() {
     await this.rabbit.createConsumer(
       {
-        queue: "job-queue",
+        queue: "create_deal_queue",
         queueOptions: { durable: true },
-        // qos: { prefetchCount: 10 } // Uncomment nếu cần giới hạn prefetch
+        qos: { prefetchCount: 10 },
       },
       async (msg) => {
         try {
-          const job = msg.body;
-          console.log(`Processing job ------- `);
-          const result = await jobService.jobQueueMQ(job);
-          const logLine = `${result.msg} with sequence: ${result.data} at ${new Date().toISOString()}\n`;
-          fs.appendFileSync("log-queue.txt", logLine);
+          const batch = msg.body;
+          const batchSequence = batch[0].sequence;
 
-          const resultPayload = {
-            error: result.error,
-            data: result.data,
-            msg: result.msg,
-          };
-          await this.resultChannel.send("result-queue", resultPayload); // Tái sử dụng channel
-          console.log(`Sent result for job to result-queue ${JSON.stringify(resultPayload)}`);
+          for (const deal of batch) {
+            await jobService.jobQueueMQ(deal);
+          }
+          console.log(
+            `Processed batch with sequence: ${batchSequence}`
+          );
         } catch (error) {
           console.error("Error processing job:", error);
         }

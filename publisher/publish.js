@@ -10,11 +10,10 @@ class Publisher {
 
   async init() {
     try {
-      if (this.isInitialized) return; // Ngăn khởi tạo lại
       await new Promise((resolve) => this.rabbit.once("connection", resolve)); // Chờ connection lần đầu
       console.log("Publisher connected to RabbitMQ");
-      await this.rabbit.queueDeclare({ queue: "job-queue", durable: true });
-      this.channel = await this.rabbit.createPublisher("job-queue", {
+      await this.rabbit.queueDeclare({ queue: "create_deal_queue", durable: true });
+      this.channel = await this.rabbit.createPublisher("create_deal_queue", {
         properties: { deliveryMode: 2, contentType: "application/json" },
       });
       this.isInitialized = true;
@@ -25,13 +24,26 @@ class Publisher {
     }
   }
 
-  async publishJob(job) {
+  async createDealQueue(deals) {
     try {
-      if (!this.isInitialized) {
-        console.log("Channel not ready, waiting for initialization...");
-        await this.init(); // Đảm bảo init hoàn tất
+      const batchSize = 1000;
+      let sequence = 0;
+      this.channel = await this.rabbit.createPublisher("create_deal_queue", {
+        properties: { deliveryMode: 2, contentType: "application/json" }
+      });
+
+      for (let i = 0; i < deals.length; i += batchSize) {
+        const batch = deals.slice(i, i + batchSize).map((deal) => ({
+          ...deal,
+          sequence: sequence++
+        }));
+        this.channel.send(
+          "create_deal_queue",
+          batch
+        );
+        this.channel.ack()
+        console.log(`Sent batch with sequence: ${batch[0].sequence}`);
       }
-      await this.channel.send("job-queue", job);
       return { error: false, message: "Job published successfully" };
     } catch (error) {
       console.error("Error publishing job:", error);

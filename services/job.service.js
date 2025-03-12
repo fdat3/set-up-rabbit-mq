@@ -1,21 +1,26 @@
-const jobQueueMQ = async (job) => {
+const jobQueueMQ = async (deal) => {
   try {
-    // const result = await new Promise((resolve) => {
-    //   setTimeout(() => {
-    //     resolve({
-    //       error: false,
-    //       data: { result: `Processed ${job.id}` },
-    //       code: 200,
-    //       msg: 'Job processed successfully from service'
-    //     });
-    //   }, 1000); // 1 giây
-    // });
+    const result = await Deal.create({
+      id: deal.id,
+      roomtypeid: deal.roomtypeid,
+      dealdate: deal.dealdate,
+      baseratebeforetax: deal.baseratebeforetax,
+      baserateaftertax: deal.baserateaftertax,
+      baserateaftertaxvnd: deal.baserateaftertaxvnd,
+      baseratewholesale: deal.baseratewholesale,
+      baseratewholesalevnd: deal.baseratewholesalevnd,
+      pobaserate: deal.pobaserate,
+      pobaseratevnd: deal.pobaseratevnd,
+      commission: deal.commission,
+      commissionvnd: deal.commissionvnd,
+      commissionpercentage: deal.commissionpercentage
+    });;
 
     return {
       error: false,
-      data: job.sequence_number,
+      data: result,
       code: 200,
-      msg: "Job processed successfully from service"
+      msg: "Insert successfully from service"
     };
   } catch (error) {
     return {
