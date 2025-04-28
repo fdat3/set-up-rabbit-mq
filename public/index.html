@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat App</title>
+</head>
+<body>
+  <h1>Chat Room</h1>
+  <input id="room" placeholder="Room name" />
+  <button onclick="joinRoom()">Join Room</button>
+  
+  <div id="chat" style="margin-top:20px; display:none;">
+    <div id="messages" style="border:1px solid #ccc; height:300px; overflow:auto;"></div>
+    <input id="message" placeholder="Message..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    function joinRoom() {
+      const room = document.getElementById('room').value;
+      socket.emit('join', room);
+      document.getElementById('chat').style.display = 'block';
+    }
+
+    function sendMessage() {
+      const room = document.getElementById('room').value;
+      const content = document.getElementById('message').value;
+      if (!content) return;
+      socket.emit('chat-message', { room, content });
+      document.getElementById('message').value = '';
+    }
+
+    socket.on('chat-message', (data) => {
+      const messages = document.getElementById('messages');
+      const message = `<p><strong>${data.user}</strong> [${data.timestamp}]: ${data.content}</p>`;
+      messages.innerHTML += message;
+      messages.scrollTop = messages.scrollHeight;
+    });
+  </script>
+</body>
+</html>
