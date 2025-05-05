@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const os = require('os');
 const { connectRabbitMQ } = require('./config/config.rabbitmq');
 const { handleChatMessage, consumeMessages, bindRoom } = require('./services/chat.service');
+const { clearSocketId } = require('./services/spam.service');
 
 const app = express();
 const server = http.createServer(app);
@@ -31,6 +32,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+    clearSocketId(socket.id); // cleanup
   });
 });
 
