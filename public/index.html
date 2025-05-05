@@ -18,6 +18,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
+    let lastSendTime = 0;
 
     function joinRoom() {
       const room = document.getElementById('room').value;
@@ -26,11 +27,18 @@
     }
 
     function sendMessage() {
+      const now = Date.now();
+      if (now - lastSendTime < 1000) {
+        alert("Bạn đang gửi quá nhanh!");
+        return;
+      }
+
       const room = document.getElementById('room').value;
       const content = document.getElementById('message').value;
       if (!content) return;
       socket.emit('chat-message', { room, content });
       document.getElementById('message').value = '';
+      lastSendTime = now;
     }
 
     socket.on('chat-message', (data) => {
@@ -38,6 +46,10 @@
       const message = `<p><strong>${data.user}</strong> [${data.timestamp}]: ${data.content}</p>`;
       messages.innerHTML += message;
       messages.scrollTop = messages.scrollHeight;
+    });
+
+    socket.on('spam-warning', (msg) => {
+      alert(msg);
     });
   </script>
 </body>

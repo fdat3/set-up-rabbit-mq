@@ -1,62 +1,18 @@
-#!/usr/bin/env node
+const amqp = require('amqplib');
+const RABBITMQ_URL = 'amqp://admin:12345@192.168.1.67:5672';
+const exchangeName = 'chat_exchange';
 
-const amqp = require('amqplib/callback_api');
+let channel;
 
-class RabbitMQConfig {
-  constructor({
-    host = 'localhost',
-    port = 5672,
-    username = 'guest',
-    password = 'guest',
-  } = {}) {
-    this.url = `amqp://${username}:${password}@${host}:${port}`;
-    this.connection = null;
-    this.channel = null;
-  }
-
-  connect(callback) {
-    amqp.connect(this.url, (error, connection) => {
-      if (error) {
-        console.error('Connection error:', error);
-        throw error;
-      }
-      this.connection = connection;
-      this.createChannel(callback);
-      console.log('RabbitMQ CONNECT ready!');
-    });
-  }
-
-  createChannel(callback) {
-    this.connection.createChannel((error, channel) => {
-      if (error) {
-        console.error('Channel creation error:', error);
-        throw error;
-      }
-      this.channel = channel;
-      // Không gọi setupQueue() ở đây
-      if (callback) callback(this);
-    });
-  }
-
-  setupQueue(queueName, options = { durable: true }) {
-    this.channel.assertQueue(queueName, options);
-  }
-
-  sendMessage(queueName, message) {
-    if (!this.channel) {
-      throw new Error('Channel not initialized. Please connect first.');
-    }
-    const bufferMessage = Buffer.from(message);
-    this.channel.sendToQueue(queueName, bufferMessage, { persistent: true });
-    console.log(` [x] Sent ${message} to ${queueName}`);
-  }
-
-  close() {
-    if (this.connection) {
-      this.connection.close();
-      console.log('RabbitMQ connection closed');
-    }
-  }
+async function connectRabbitMQ() {
+  const connection = await amqp.connect(RABBITMQ_URL);
+  channel = await connection.createChannel();
+  await channel.assertExchange(exchangeName, 'direct', { durable: true });
+  return channel;
 }
 
-module.exports = RabbitMQConfig;
+module.exports = {
+  connectRabbitMQ,
+  getChannel: () => channel,
+  exchangeName
+};
