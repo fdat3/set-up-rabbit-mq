@@ -3,7 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const os = require('os');
 const { connectRabbitMQ } = require('./config/config.rabbitmq');
-const { handleChatMessage, consumeMessages, bindRoom } = require('./services/chat.service');
+const { handleChatMessage, consumeMessages, bindRoom, consumeRoomMessages, consumeLogs, consumeHistory } = require('./services/chat.service');
 const { clearSocketId } = require('./services/spam.service');
 
 const app = express();
@@ -20,14 +20,8 @@ io.on('connection', (socket) => {
     console.log(`${socket.id} joined room ${room}`);
   });
 
-  socket.on('join', (room) => {
-    socket.join(room);
-    bindRoom(room);
-    console.log(`${socket.id} joined room ${room}`);
-  });
-
   socket.on('chat-message', (data) => {
-    handleChatMessage(io, socket)(data); 
+    handleChatMessage(io, socket)(data);
   });
 
   socket.on('disconnect', () => {
@@ -44,5 +38,7 @@ setInterval(() => {
 server.listen(3000, async () => {
   console.log('Server running at http://localhost:3000');
   await connectRabbitMQ();
-  await consumeMessages(io);
+  await consumeRoomMessages(io);
+  await consumeLogs();
+  await consumeHistory();
 });

@@ -1,32 +1,41 @@
 const { getChannel, exchangeName } = require('../config/config.rabbitmq');
 const { isSpamming } = require('./spam.service');
-
-let queueName = ''; 
-
-async function consumeMessages(io) {
+async function consumeRoomMessages(io) {
   const channel = getChannel();
-  const q = await channel.assertQueue('', { exclusive: true });
-  queueName = q.queue;
+  await channel.assertQueue('chat.room.processor');
+  await channel.bindQueue('chat.room.processor', exchangeName, 'chat.message.*');
 
-  channel.consume(queueName, (msg) => {
-    if (msg) {
-      const data = JSON.parse(msg.content.toString());
-      console.log('Received from RabbitMQ:', data);
-      io.to(data.room).emit('chat-message', data); 
-      channel.ack(msg);
-    }
+  channel.consume('chat.room.processor', (msg) => {
+    const data = JSON.parse(msg.content.toString());
+    console.log('[Room] Chat message:', data);
+    io.to(data.room).emit('chat-message', data);
+    channel.ack(msg);
+  });
+}
+async function consumeLogs() {
+  const channel = getChannel();
+  await channel.assertQueue('chat.logger');
+  await channel.bindQueue('chat.logger', exchangeName, 'chat.log.*');
+
+  channel.consume('chat.logger', (msg) => {
+    const log = JSON.parse(msg.content.toString());
+    console.log('[Log] Saved message:', log); // hoặc lưu file, DB, v.v.
+    channel.ack(msg);
+  });
+}
+async function consumeHistory() {
+  const channel = getChannel();
+  await channel.assertQueue('chat.history');
+  await channel.bindQueue('chat.history', exchangeName, 'chat.history');
+
+  channel.consume('chat.history', (msg) => {
+    const history = JSON.parse(msg.content.toString());
+    // gọi DB service để lưu
+    console.log('[DB] Save history:', history);
+    channel.ack(msg);
   });
 }
 
-function bindRoom(room) {
-  const channel = getChannel();
-  if (!queueName) {
-    console.warn('Queue chưa được khởi tạo!');
-    return;
-  }
-  channel.bindQueue(queueName, exchangeName, room);
-  console.log(`[x] Queue bound to room: ${room}`);
-}
 
 function handleChatMessage(io, socket) {
   return async ({ room, content }) => {
@@ -34,15 +43,32 @@ function handleChatMessage(io, socket) {
       socket.emit('spam-warning', 'Bạn đang gửi quá nhanh!');
       return;
     }
+
     const message = {
       room,
       user: socket.id,
       content,
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: new Date().toISOString()
     };
-    console.log('Publishing message to RabbitMQ:', message);
-    getChannel().publish(exchangeName, room, Buffer.from(JSON.stringify(message)));
+
+    const channel = getChannel();
+    if (!channel) {
+      console.error('RabbitMQ channel chưa sẵn sàng!');
+      return;
+    }
+
+    // Gửi message chính đến room
+    channel.publish(exchangeName, `chat.message.${room}`, Buffer.from(JSON.stringify(message)));
+
+    // Gửi log
+    channel.publish(exchangeName, `chat.log.${room}`, Buffer.from(JSON.stringify(message)));
+
+    // Gửi lưu DB
+    channel.publish(exchangeName, `chat.history`, Buffer.from(JSON.stringify(message)));
+
+    console.log('Published message to multiple routes via topic exchange');
   };
 }
 
-module.exports = { handleChatMessage, consumeMessages, bindRoom };
+
+module.exports = { handleChatMessage, consumeHistory, consumeLogs, consumeRoomMessages };
