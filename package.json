@@ -13,6 +13,7 @@
   "description": "",
   "dependencies": {
     "amqplib": "^0.10.7",
+    "async": "^3.2.6",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "rabbitmq-client": "^5.0.2",

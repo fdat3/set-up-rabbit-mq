@@ -1,29 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <title>Chat App</title>
+  <title>Private Chat App</title>
 </head>
+
 <body>
-  <h1>Chat Room</h1>
-  <input id="room" placeholder="Room name" />
-  <button onclick="joinRoom()">Join Room</button>
-  
+  <h1>Private Chat App</h1>
+
+  <div id="online-users" style="margin-top:20px;">
+    <h3>Online Users:</h3>
+    <ul id="user-list" style="border:1px solid #ccc; height:100px; overflow:auto; padding: 5px;"></ul>
+  </div>
+
+  <h3 id="currentChat" style="display:none;">
+    Chat with: <span id="chatWith"></span>
+  </h3>
+
   <div id="chat" style="margin-top:20px; display:none;">
-    <div id="messages" style="border:1px solid #ccc; height:300px; overflow:auto;"></div>
+    <div id="messages" style="border:1px solid #ccc; height:300px; overflow:auto; padding:5px;"></div>
     <input id="message" placeholder="Message..." />
     <button onclick="sendMessage()">Send</button>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
+  <script src="http://localhost:3001/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
-    let lastSendTime = 0;
+    let userId = localStorage.getItem('userId');
+    let counter = 0;
 
-    function joinRoom() {
-      const room = document.getElementById('room').value;
-      socket.emit('join', room);
-      document.getElementById('chat').style.display = 'block';
+    if (!userId) {
+      userId = 'guest_' + Math.random().toString(36).substring(2, 10);
+      localStorage.setItem('userId', userId);
+    }
+
+    const socket = io("http://localhost:3001", {
+      query: {
+        clientId: userId 
+      }
+    });    
+    let socketId = null;
+    let lastSendTime = 0;
+    let selectedUserId = null;
+
+    socket.on('connect', () => {
+      socketId = socket.id;
+      console.log('Connected with socket ID:', socketId);
+      socket.emit('register_user', { userId });
+    });
+
+    // Nhận danh sách user online
+    socket.on('online_users', (userList) => {
+      const userListEl = document.getElementById('user-list');
+      userListEl.innerHTML = '';
+
+      userList.forEach(user => {
+        if (user !== userId) {
+          const li = document.createElement('li');
+          li.textContent = user;
+          li.style.cursor = 'pointer';
+          li.onclick = () => {
+            selectedUserId = user;
+            document.getElementById('currentChat').style.display = 'block';
+            document.getElementById('chatWith').textContent = user;
+            document.getElementById('chat').style.display = 'block';
+            document.getElementById('messages').innerHTML = ''; // clear messages for new chat
+          };
+          userListEl.appendChild(li);
+        }
+      });
+    });
+
+
+    function generateUniqueId() {
+      const now = Date.now();
+      counter = (counter + 1) % 10000;
+      const random = Math.floor(Math.random() * 100000);
+      return `chat_${now}_${random}_${counter}`;
     }
 
     function sendMessage() {
@@ -33,24 +86,29 @@
         return;
       }
 
-      const room = document.getElementById('room').value;
-      const content = document.getElementById('message').value;
-      if (!content) return;
-      socket.emit('chat-message', { room, content });
+      const messageContent = document.getElementById('message').value.trim();
+      if (!messageContent || !selectedUserId) return;
+
+      const payload = {
+        chatId: generateUniqueId(),
+        sender_id: userId,
+        reciever_id: selectedUserId,
+        message: messageContent
+      };
+
+      socket.emit('private_message', payload);
       document.getElementById('message').value = '';
       lastSendTime = now;
     }
 
-    socket.on('chat-message', (data) => {
+    // Nhận tin nhắn riêng
+    socket.on('private_message', (data) => {
       const messages = document.getElementById('messages');
-      const message = `<p><strong>${data.user}</strong> [${data.timestamp}]: ${data.content}</p>`;
-      messages.innerHTML += message;
+      const msg = `<p><strong>${data.sender_id}</strong>: ${data.message}</p>`;
+      messages.innerHTML += msg;
       messages.scrollTop = messages.scrollHeight;
-    });
-
-    socket.on('spam-warning', (msg) => {
-      alert(msg);
     });
   </script>
 </body>
+
 </html>

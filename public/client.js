@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client'
 
 // establish socket connection and run server on port 4000
-const socket = io('http://localhost:3000')
+const socket = io('http://localhost:3001')
 
 // bring in the container, input field where message is entered and send button
 const chat = document.querySelector('.container')
